@@ -17,7 +17,7 @@ FLOW_FILE=/path/to/file.flow \
 STORE=redis \
 REDIS_URL=redis://localhost:6379/0 \
 KEY_PREFIX="" \
-mitmdump -s /Users/rajaravivarma/Github/scripts-collection/python/mitm-scripts/dump_flows_to_redis.py -n
+mitmdump -s /path/to/dump_flows_to_redis.py -n
 ```
 
 ```
@@ -25,7 +25,7 @@ FLOW_FILE=/path/to/file.flow \
 STORE=sqlite \
 SQLITE_PATH=./mitm_flows.sqlite \
 KEY_PREFIX="" \
-mitmdump -s /Users/rajaravivarma/Github/scripts-collection/python/mitm-scripts/dump_flows_to_redis.py -n
+mitmdump -s /path/to/dump_flows_to_redis.py -n
 ```
 
 ## One-step wrapper
@@ -33,17 +33,19 @@ mitmdump -s /Users/rajaravivarma/Github/scripts-collection/python/mitm-scripts/d
 The wrapper loads the `.flow` file and starts the server in one go:
 
 ```
-./run_replay.sh --flow-file /path/to/file.flow --store redis
+MITM_DUMP_SCRIPT=/path/to/dump_flows_to_redis.py \
+./scripts/run_replay.sh --flow-file /path/to/file.flow --store redis
 ```
 
 ```
-./run_replay.sh --flow-file /path/to/file.flow --store sqlite --sqlite-path ./mitm_flows.sqlite
+MITM_DUMP_SCRIPT=/path/to/dump_flows_to_redis.py \
+./scripts/run_replay.sh --flow-file /path/to/file.flow --store sqlite --sqlite-path ./mitm_flows.sqlite
 ```
 
 ## Run the replay server (Redis)
 
 ```
-go run ./mitmredis \
+go run ./cmd/mitmredis \
   -listen :8090 \
   -store redis \
   -redis-addr 127.0.0.1:6379 \
@@ -54,7 +56,7 @@ go run ./mitmredis \
 ## Run the replay server (SQLite)
 
 ```
-go run ./mitmredis \
+go run ./cmd/mitmredis \
   -listen :8090 \
   -store sqlite \
   -sqlite-path ./mitm_flows.sqlite \
@@ -66,7 +68,7 @@ go run ./mitmredis \
 When `-upstream` is set, cache misses are forwarded to the upstream server and cached in the selected backend automatically.
 
 ```
-go run ./mitmredis \
+go run ./cmd/mitmredis \
   -listen :8090 \
   -store redis \
   -redis-addr 127.0.0.1:6379 \
@@ -74,7 +76,7 @@ go run ./mitmredis \
 ```
 
 ```
-go run ./mitmredis \
+go run ./cmd/mitmredis \
   -listen :8090 \
   -store redis \
   -redis-addr 127.0.0.1:6379 \
@@ -85,5 +87,8 @@ go run ./mitmredis \
 ## Tests
 
 ```
-go test ./mitmredis
+go test ./...
 ```
+
+Integration tests require `mitmdump` in `PATH` and `MITM_DUMP_SCRIPT` set to the
+`dump_flows_to_redis.py` script.
