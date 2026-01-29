@@ -9,10 +9,13 @@ import (
 // RequestContext carries mutable request state for plugin hooks.
 // Plugins may update Key or Body to influence cache lookup and upstream fetch.
 type RequestContext struct {
-	Request  *http.Request
-	Body     []byte
-	Key      string
-	CacheHit bool
+	Request    *http.Request
+	Body       []byte
+	Key        string
+	CacheHit   bool
+	Repository Repository
+	SkipCache  bool
+	SkipStore  bool
 	// Response allows plugins to short-circuit cache/upstream handling.
 	Response *StoredResponse
 }
