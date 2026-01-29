@@ -35,14 +35,22 @@ func NewUpstreamClient(baseURL string, timeout time.Duration) (*UpstreamClient, 
 
 func (u *UpstreamClient) Fetch(ctx context.Context, req *http.Request, body []byte) (*http.Response, []byte, error) {
 	target := *u.baseURL
-	target.Path = req.URL.Path
-	target.RawQuery = req.URL.RawQuery
+	if req.URL.Scheme != "" && req.URL.Host != "" {
+		target = *req.URL
+	} else {
+		target.Path = req.URL.Path
+		target.RawQuery = req.URL.RawQuery
+	}
 
 	forwardReq, err := http.NewRequestWithContext(ctx, req.Method, target.String(), bytes.NewReader(body))
 	if err != nil {
 		return nil, nil, err
 	}
-	forwardReq.Host = u.baseURL.Host
+	if target.Host != "" {
+		forwardReq.Host = target.Host
+	} else {
+		forwardReq.Host = u.baseURL.Host
+	}
 	forwardReq.Header = cloneRequestHeaders(req.Header)
 
 	resp, err := u.client.Do(forwardReq)

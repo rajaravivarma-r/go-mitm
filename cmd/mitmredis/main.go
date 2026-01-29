@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rajaravivarma/go-mitm/internal/replay"
 )
 
@@ -28,6 +29,8 @@ func main() {
 	upstreamTimeout := flag.Duration("upstream-timeout", 30*time.Second, "Timeout for upstream requests")
 
 	flag.Parse()
+
+	gin.SetMode(gin.ReleaseMode)
 
 	var repository replay.Repository
 	var err error

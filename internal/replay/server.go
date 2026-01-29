@@ -13,6 +13,7 @@ type ServerOptions struct {
 	Upstream        *UpstreamClient
 	RecordMiss      bool
 	RecordOverwrite bool
+	Plugins         []Plugin
 }
 
 func NewReplayRouter(repository Repository, options ServerOptions) *gin.Engine {
@@ -25,7 +26,29 @@ func NewReplayRouter(repository Repository, options ServerOptions) *gin.Engine {
 			return
 		}
 
-		key := options.KeyPrefix + flowReq.key
+		ctx := &RequestContext{
+			Request: c.Request,
+			Body:    flowReq.body,
+			Key:     flowReq.key,
+		}
+		if pluginErr := applyRequestPlugins(options.Plugins, ctx); pluginErr != nil {
+			log.Printf("request plugin failed: %v", pluginErr)
+			c.Status(statusFromPluginError(pluginErr))
+			return
+		}
+		if ctx.Response != nil {
+			if pluginErr := applyResponsePlugins(options.Plugins, ctx, ctx.Response); pluginErr != nil {
+				log.Printf("response plugin failed: %v", pluginErr)
+				c.Status(statusFromPluginError(pluginErr))
+				return
+			}
+			if writeErr := writeStoredResponse(c.Writer, *ctx.Response); writeErr != nil {
+				log.Printf("write response failed: %v", writeErr)
+			}
+			return
+		}
+
+		key := options.KeyPrefix + ctx.Key
 		stored, found, lookupErr := repository.Get(c.Request.Context(), key)
 		if lookupErr != nil {
 			log.Printf("lookup failed: %v", lookupErr)
@@ -33,6 +56,12 @@ func NewReplayRouter(repository Repository, options ServerOptions) *gin.Engine {
 			return
 		}
 		if found {
+			ctx.CacheHit = true
+			if pluginErr := applyResponsePlugins(options.Plugins, ctx, &stored); pluginErr != nil {
+				log.Printf("response plugin failed: %v", pluginErr)
+				c.Status(statusFromPluginError(pluginErr))
+				return
+			}
 			if writeErr := writeStoredResponse(c.Writer, stored); writeErr != nil {
 				log.Printf("write response failed: %v", writeErr)
 			}
@@ -47,7 +76,7 @@ func NewReplayRouter(repository Repository, options ServerOptions) *gin.Engine {
 			return
 		}
 
-		resp, respBody, fetchErr := options.Upstream.Fetch(c.Request.Context(), c.Request, flowReq.body)
+		resp, respBody, fetchErr := options.Upstream.Fetch(c.Request.Context(), ctx.Request, ctx.Body)
 		if fetchErr != nil {
 			log.Printf("upstream fetch failed: %v", fetchErr)
 			c.Status(http.StatusBadGateway)
@@ -57,6 +86,11 @@ func NewReplayRouter(repository Repository, options ServerOptions) *gin.Engine {
 		stored = storedResponseFromHTTP(resp, respBody)
 		if storeErr := repository.Set(c.Request.Context(), key, stored, options.RecordOverwrite); storeErr != nil {
 			log.Printf("store response failed: %v", storeErr)
+		}
+		if pluginErr := applyResponsePlugins(options.Plugins, ctx, &stored); pluginErr != nil {
+			log.Printf("response plugin failed: %v", pluginErr)
+			c.Status(statusFromPluginError(pluginErr))
+			return
 		}
 		if writeErr := writeStoredResponse(c.Writer, stored); writeErr != nil {
 			log.Printf("write response failed: %v", writeErr)
