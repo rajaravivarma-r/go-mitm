@@ -59,7 +59,9 @@ func TestReplaySampleFlowSQLite(t *testing.T) {
 	}
 	defer repository.Close()
 
-	router := NewReplayRouter(repository, ServerOptions{})
+	router := NewReplayRouter(repository, ServerOptions{
+		Plugins: []Plugin{NewReplayPlugin()},
+	})
 	server := httptest.NewServer(router)
 	defer server.Close()
 

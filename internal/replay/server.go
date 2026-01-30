@@ -30,6 +30,7 @@ func NewReplayRouter(repository Repository, options ServerOptions) *gin.Engine {
 			Request:    c.Request,
 			Body:       flowReq.body,
 			Key:        flowReq.key,
+			KeyPrefix:  options.KeyPrefix,
 			Repository: repository,
 		}
 		if pluginErr := applyRequestPlugins(options.Plugins, ctx); pluginErr != nil {
@@ -49,34 +50,6 @@ func NewReplayRouter(repository Repository, options ServerOptions) *gin.Engine {
 			return
 		}
 
-		key := options.KeyPrefix + ctx.Key
-		var stored StoredResponse
-		if !ctx.SkipCache {
-			var found bool
-			var lookupErr error
-			stored, found, lookupErr = repository.Get(c.Request.Context(), key)
-			if lookupErr != nil {
-				log.Printf("lookup failed: %v", lookupErr)
-				c.Status(http.StatusBadGateway)
-				return
-			}
-			if found {
-				ctx.CacheHit = true
-				if pluginErr := applyResponsePlugins(options.Plugins, ctx, &stored); pluginErr != nil {
-					log.Printf("response plugin failed: %v", pluginErr)
-					c.Status(statusFromPluginError(pluginErr))
-					return
-				}
-				if writeErr := writeStoredResponse(c.Writer, stored); writeErr != nil {
-					log.Printf("write response failed: %v", writeErr)
-				}
-				return
-			}
-		}
-
-		if options.LogNotFound && !ctx.SkipCache {
-			log.Printf("cache miss: %s", key)
-		}
 		if options.Upstream == nil {
 			c.Status(http.StatusNotFound)
 			return
@@ -89,12 +62,7 @@ func NewReplayRouter(repository Repository, options ServerOptions) *gin.Engine {
 			return
 		}
 
-		stored = storedResponseFromHTTP(resp, respBody)
-		if !ctx.SkipStore {
-			if storeErr := repository.Set(c.Request.Context(), key, stored, options.RecordOverwrite); storeErr != nil {
-				log.Printf("store response failed: %v", storeErr)
-			}
-		}
+		stored := storedResponseFromHTTP(resp, respBody)
 		if pluginErr := applyResponsePlugins(options.Plugins, ctx, &stored); pluginErr != nil {
 			log.Printf("response plugin failed: %v", pluginErr)
 			c.Status(statusFromPluginError(pluginErr))

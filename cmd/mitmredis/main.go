@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -66,6 +67,19 @@ func main() {
 		Upstream:        upstream,
 		RecordMiss:      *recordMiss,
 		RecordOverwrite: *recordOverwrite,
+		Plugins: []replay.Plugin{
+			&replay.ReplayPlugin{
+				BasePlugin:  replay.BasePlugin{PluginName: "replay"},
+				Enable:      true,
+				LogNotFound: *logNotFound,
+			},
+			&replay.RecordPlugin{
+				BasePlugin:        replay.BasePlugin{PluginName: "record"},
+				Enable:            true,
+				Overwrite:         *recordOverwrite,
+				IgnoreStatusCodes: []int{http.StatusTooManyRequests},
+			},
+		},
 	})
 
 	if err := router.Run(*listenAddr); err != nil {

@@ -12,6 +12,7 @@ type RequestContext struct {
 	Request    *http.Request
 	Body       []byte
 	Key        string
+	KeyPrefix  string
 	CacheHit   bool
 	Repository Repository
 	SkipCache  bool
