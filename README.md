@@ -2,6 +2,12 @@
 
 Replay mitmproxy flows from Redis or SQLite, and optionally record new responses from an upstream server.
 
+## Warning
+Completely vibe coded just nudging the agent to build stuff in the way I want build stuff. Proceed with caution.
+
+## Intention:
+To have a performant alternative to https://www.mitmproxy.org/, for *some usecases*.
+
 ## Prerequisites
 
 - Go 1.22+
